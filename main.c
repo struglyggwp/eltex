@@ -1,9 +1,6 @@
 #include <stdio.h>
 #include <windows.h>
 
-
-// Функция для представления положительного десятичного числа в двоичном виде.
-
 void check()
 {
     unsigned int m;
@@ -79,12 +76,11 @@ int main(void)
     SetConsoleCP(1251);
     SetConsoleOutputCP(1251);
 
-    check();    // Задание №1
-    check_minus();      // Задание №2
+    check();              // Задание №1
+    check_minus();       // Задание №2
     print_units();      // Задание №3
-    // Задание №4
-
-
-    int m;
-    change_third(&m);
+    unsigned int m;    // Задание №4
+    printf("Введите значение целого положительного числа\n");  // Задание №4
+    scanf_s("%u", &m); // Задание №4
+    change_third(&m); // Задание №4
 }
