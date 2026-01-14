@@ -19,42 +19,42 @@ Command getUserCommand() {
     case 5:
       return EXIT;
     default:
-      printf("Неверная команда!\n");
-      return getUserCommand();  // рекурсия до корректного ввода
+      printf("ГЌГҐГўГҐГ°Г­Г Гї ГЄГ®Г¬Г Г­Г¤Г !\n");
+      return getUserCommand(); 
   }
 }
 
 
 void printMenu() {
-  printf("Меню:\n");
-  printf("1. Добавить абонента\n");
-  printf("2. Найти абонента\n");
-  printf("3. Удалить абонента\n");
-  printf("4. Показать всех абонентов\n");
-  printf("5. Выйти\n");
-  printf("Выберите команду: ");
+  printf("ГЊГҐГ­Гѕ:\n");
+  printf("1. Г„Г®ГЎГ ГўГЁГІГј Г ГЎГ®Г­ГҐГ­ГІГ \n");
+  printf("2. ГЌГ Г©ГІГЁ Г ГЎГ®Г­ГҐГ­ГІГ \n");
+  printf("3. Г“Г¤Г Г«ГЁГІГј Г ГЎГ®Г­ГҐГ­ГІГ \n");
+  printf("4. ГЏГ®ГЄГ Г§Г ГІГј ГўГ±ГҐГµ Г ГЎГ®Г­ГҐГ­ГІГ®Гў\n");
+  printf("5. Г‚Г»Г©ГІГЁ\n");
+  printf("Г‚Г»ГЎГҐГ°ГЁГІГҐ ГЄГ®Г¬Г Г­Г¤Гі: ");
 }
 
 void executeCommand(Command cmd, struct abonent* a) {
   switch (cmd) {
     case ADD:
-      printf("Добавляем абонента...\n");
+      printf("Г„Г®ГЎГ ГўГ«ГїГҐГ¬ Г ГЎГ®Г­ГҐГ­ГІГ ...\n");
       input_abonent(a);
       break;
     case FIND:
-      printf("Ищем абонента...\n");
+      printf("Г€Г№ГҐГ¬ Г ГЎГ®Г­ГҐГ­ГІГ ...\n");
       find_abonent(a);
       break;
     case DELETE_ABONENT:
-      printf("Удаляем абонента...\n");
+      printf("Г“Г¤Г Г«ГїГҐГ¬ Г ГЎГ®Г­ГҐГ­ГІГ ...\n");
       delete_abonent(a);
       break;
     case PRINT:
-      printf("Печатаем всех абонентов...\n");
+      printf("ГЏГҐГ·Г ГІГ ГҐГ¬ ГўГ±ГҐГµ Г ГЎГ®Г­ГҐГ­ГІГ®Гў...\n");
       print_all_abonents(a);
       break;
     case EXIT:
-      printf("Выход из программы.\n");
+      printf("Г‚Г»ГµГ®Г¤ ГЁГ§ ГЇГ°Г®ГЈГ°Г Г¬Г¬Г».\n");
       break;
   }
 }
@@ -63,28 +63,28 @@ void executeCommand(Command cmd, struct abonent* a) {
 void input_abonent(struct abonent* a) {
   for (int i = 0; i < 100; i++) {
     if (a[i].name[0] == '\0') {
-      printf("Введите имя абонента\n");
+      printf("Г‚ГўГҐГ¤ГЁГІГҐ ГЁГ¬Гї Г ГЎГ®Г­ГҐГ­ГІГ \n");
       scanf_s("%9s", a[i].name, (unsigned)sizeof(a[i].name));
-      printf("Введите фамилию абонента\n");
+      printf("Г‚ГўГҐГ¤ГЁГІГҐ ГґГ Г¬ГЁГ«ГЁГѕ Г ГЎГ®Г­ГҐГ­ГІГ \n");
       scanf_s("%9s", a[i].second_name, (unsigned)sizeof(a[i].second_name));
-      printf("Введите телефон абонента\n");
+      printf("Г‚ГўГҐГ¤ГЁГІГҐ ГІГҐГ«ГҐГґГ®Г­ Г ГЎГ®Г­ГҐГ­ГІГ \n");
       scanf_s("%9s", a[i].telephone, (unsigned)sizeof(a[i].telephone));
       return;
     } 
   }
-    printf("Телефонная книга заполнена!\n");
+    printf("Г’ГҐГ«ГҐГґГ®Г­Г­Г Гї ГЄГ­ГЁГЈГ  Г§Г ГЇГ®Г«Г­ГҐГ­Г !\n");
  }
 
 
 void print_abonent(struct abonent a) {
-  printf("Имя: %s, Фамилия: %s, Телефон: %s\n", a.name, a.second_name,
+  printf("Г€Г¬Гї: %s, Г”Г Г¬ГЁГ«ГЁГї: %s, Г’ГҐГ«ГҐГґГ®Г­: %s\n", a.name, a.second_name,
          a.telephone);
 }
 
 
 void find_abonent(struct abonent* a) {
   char search_name[10];
-  printf("Введите имя абонента для поиска\n");
+  printf("Г‚ГўГҐГ¤ГЁГІГҐ ГЁГ¬Гї Г ГЎГ®Г­ГҐГ­ГІГ  Г¤Г«Гї ГЇГ®ГЁГ±ГЄГ \n");
   scanf_s("%9s", search_name, (unsigned)sizeof(search_name));
   int found = 0;
   for (int i = 0; i < 100; i++) {
@@ -94,13 +94,13 @@ void find_abonent(struct abonent* a) {
     }
   }
   if (!found) {
-    printf("Абонент с именем %s не найден\n", search_name);
+    printf("ГЂГЎГ®Г­ГҐГ­ГІ Г± ГЁГ¬ГҐГ­ГҐГ¬ %s Г­ГҐ Г­Г Г©Г¤ГҐГ­\n", search_name);
   }
 }
 
 void delete_abonent(struct abonent* a) {
   char delete_name[10];
-  printf("Введите имя абонента для удаления\n");
+  printf("Г‚ГўГҐГ¤ГЁГІГҐ ГЁГ¬Гї Г ГЎГ®Г­ГҐГ­ГІГ  Г¤Г«Гї ГіГ¤Г Г«ГҐГ­ГЁГї\n");
   scanf_s("%9s", delete_name, (unsigned)sizeof(delete_name));
   int found = 0;
   for (int i = 0; i < 100; i++) {
@@ -115,9 +115,9 @@ void delete_abonent(struct abonent* a) {
     }
   }
   if (!found) {
-    printf("Абонент с именем %s не найден\n", delete_name);
+    printf("ГЂГЎГ®Г­ГҐГ­ГІ Г± ГЁГ¬ГҐГ­ГҐГ¬ %s Г­ГҐ Г­Г Г©Г¤ГҐГ­\n", delete_name);
   } else {
-    printf("Абонент с именем %s удален\n", delete_name);
+    printf("ГЂГЎГ®Г­ГҐГ­ГІ Г± ГЁГ¬ГҐГ­ГҐГ¬ %s ГіГ¤Г Г«ГҐГ­\n", delete_name);
   }
 }
 
@@ -127,4 +127,5 @@ void print_all_abonents(struct abonent* a) {
       print_abonent(a[i]);
     }
   }
+
 }
