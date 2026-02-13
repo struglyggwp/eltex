@@ -18,4 +18,5 @@ float divide(int a, int b);
 
 
 
-#endif  // !_LIB_CALC_H_
+#endif
+
