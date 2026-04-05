@@ -1,0 +1,7 @@
+#ifndef MC_CONSTANTS_H
+#define MC_CONSTANTS_H
+
+#define MC_MAX_FILES 1024
+#define MC_PATH_BUFFER_SIZE 1024
+
+#endif
