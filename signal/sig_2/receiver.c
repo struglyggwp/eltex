@@ -12,12 +12,12 @@ int main(void)
 {
     printf("PID процесса: %d\n", getpid());
 
-    sigset_t sa;
-    sigemptyset(&sa);
+    sigset_t set;
+    sigemptyset(&set);
 
-    sigaddset(&sa, SIGINT);
+    sigaddset(&set, SIGINT);
 
-    if(sigprocmask(SIG_BLOCK, &sa, NULL) == -1){
+    if(sigprocmask(SIG_BLOCK, &set, NULL) == -1){
         perror("sigprocmask");
         return EXIT_FAILURE;
     }
