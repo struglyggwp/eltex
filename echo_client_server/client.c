@@ -7,9 +7,9 @@
 #include <arpa/inet.h>
 #include <netinet/udp.h>
 #include <netinet/ip.h> 
-#include <linux/if_packet.h> 
-#include <net/ethernet.h>    
-#include <net/if.h>          
+#include <linux/if_packet.h> // Для struct sockaddr_ll
+#include <net/ethernet.h>    // Для struct ethhdr и константы ETH_P_IP
+#include <net/if.h>          // Для функции if_nametoindex
 
 #define SERVER_PORT 7777
 #define CLIENT_PORT 8888

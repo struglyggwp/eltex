@@ -37,7 +37,8 @@ int main() {
 
         printf("[Сервер] Получено: %s\n", buffer);
 
-        if (buffer[0] != '\0') buffer[0] = '*'; 
+        // Модифицируем произвольный символ (например, первый)
+        if (buffer[0] != '\0') buffer[bytes + 1] = '1'; 
 
         printf("[Сервер] Отправляю измененную строку: %s\n", buffer);
         sendto(fd, buffer, bytes, 0, (struct sockaddr*)&client_addr, addr_len);
