@@ -7,59 +7,36 @@
 #include <arpa/inet.h>
 #include <netinet/udp.h>
 #include <netinet/ip.h> 
-#include <linux/if_packet.h> // Для struct sockaddr_ll
-#include <net/ethernet.h>    // Для struct ethhdr и константы ETH_P_IP
-#include <net/if.h>          // Для функции if_nametoindex
 
 #define SERVER_PORT 7777
 #define CLIENT_PORT 8888
 #define BUFFER_SIZE 512
 
-unsigned short checksum(unsigned short *ptr, int nbytes) {
-    long sum = 0;
-    unsigned short oddbyte;
-    unsigned short answer;
-
-    while (nbytes > 1) {
-        sum += *ptr++;
-        nbytes -= 2;
-    }
-    if (nbytes == 1) {
-        oddbyte = 0;
-        *((unsigned char *)&oddbyte) = *(unsigned char *)ptr;
-        sum += oddbyte;
-    }
-    sum = (sum >> 16) + (sum & 0xffff);
-    sum += (sum >> 16);
-    answer = (unsigned short)~sum;
-    return answer;
-}
-
-
-
 int main() {
    
-    int fd = socket(AF_PACKET, SOCK_RAW, htons(ETH_P_ALL));
+    char message[256];
+
+    int fd = socket(AF_INET, SOCK_RAW, IPPROTO_UDP);
+
+    if(fd == -1){
+        perror("socket error");
+        exit(EXIT_FAILURE);
+    }
+
+    int flag = 1;
+    if (setsockopt(fd, IPPROTO_IP, IP_HDRINCL, &flag, sizeof(flag)) < 0) {
+        perror("setsockopt error");
+        exit(EXIT_FAILURE);
+    }
 
     char packet[512];
+
+
     memset(packet, 0, 512);
 
-    unsigned char src_mac[6] = {0x08, 0x00, 0x27, 0xC9, 0x1A, 0xAE};
-    unsigned char dest_mac[6] = {0x08, 0x00, 0x27, 0x63, 0xB0, 0x05};
-
-    struct ethhdr *eth = ( struct ethhdr*) packet;
-    struct iphdr *iph = (struct iphdr*)(packet + sizeof(struct ethhdr));
-    struct udphdr *udph = (struct udphdr*)(packet + sizeof( struct ethhdr) + sizeof(struct iphdr) );
-
-    char *data = packet + sizeof(struct ethhdr) + sizeof(struct iphdr) + sizeof(struct udphdr);
-    strcpy(data, "Hello server");
-
-    memcpy(eth->h_source, src_mac, 6);
-    memcpy(eth->h_dest, dest_mac, 6);
-
-    eth->h_proto = htons(ETH_P_IP);
-
- // заполнение ip заголовка
+    struct iphdr *iph = (struct iphdr*) packet;
+    struct udphdr *udph = (struct udphdr*)(packet + sizeof(struct iphdr));
+    char *data = packet + sizeof(struct iphdr) + sizeof(struct udphdr);
 
     iph->ttl = 64;
     iph->frag_off = 0;
@@ -67,59 +44,91 @@ int main() {
     iph->version = 4;
     iph->tos = 0;
     iph->protocol = IPPROTO_UDP;
-    iph->tot_len = htons(sizeof(struct iphdr) + sizeof(struct udphdr) + strlen(data));
     iph->ihl = 5;
-    iph->saddr = inet_addr("192.168.1.50");
-    iph->daddr = inet_addr("192.168.1.102");
-    iph->check = checksum((unsigned short *)iph, sizeof(struct iphdr));
+    iph->saddr = inet_addr("127.0.0.1");
+    iph->daddr = inet_addr("127.0.0.1");
+    iph->check = 0;
 
- // заполнение udp заголовка
     udph->source = htons(CLIENT_PORT);
     udph->dest = htons(SERVER_PORT);
-    udph->len = htons(sizeof(struct udphdr) + strlen(data));
     udph->check = 0;
 
-    struct sockaddr_ll server_addr;
-    server_addr.sll_family = AF_PACKET;
-    server_addr.sll_ifindex = if_nametoindex("eth0");
-    server_addr.sll_halen = ETH_ALEN;
-    memcpy(server_addr.sll_addr, dest_mac, 6);  
+    struct sockaddr_in server_addr;
 
-    int packet_size = sizeof(struct ethhdr) + ntohs(iph->tot_len);;
+    memset(&server_addr, 0, sizeof(server_addr));
 
-    if(sendto(fd, packet, packet_size, 0, (struct sockaddr*) &server_addr, sizeof(server_addr)) == -1){
-        perror("sendto error");
+    server_addr.sin_family = AF_INET;
+    server_addr.sin_port = 0;
+    server_addr.sin_addr.s_addr = inet_addr("127.0.0.1");
+
+    int packet_size = ntohs(iph->tot_len);
+
+    while(1){
+    printf("Напишите echo-сообщение\n");
+    
+    memset(message, 0, sizeof(message));
+
+    if (fgets(message, sizeof(message), stdin) == NULL) {
+        perror("fgets error");
+        continue;
+    }
+
+    udph->len = htons(sizeof(struct udphdr) + strlen(data));
+    iph->tot_len = htons(sizeof(struct iphdr) + sizeof(struct udphdr) + strlen(data));
+
+    message[strcspn(message, "\n")] = '\0';
+
+    strcpy(data, message);
+
+    int data_len = strlen(data);
+
+    iph->tot_len = htons(sizeof(struct iphdr) + sizeof(struct udphdr) + data_len);
+    udph->len = htons(sizeof(struct udphdr) + data_len);
+    packet_size = sizeof(struct iphdr) + sizeof(struct udphdr) + data_len;
+
+    if (sendto(fd, packet, packet_size, 0, (struct sockaddr*) &server_addr, sizeof(server_addr)) == -1) {
+        perror("sendto message error");
         exit(EXIT_FAILURE);
     }
 
-    printf("Пакет серверу отправлен\n");
+    if (strcmp(message, "exit") == 0) {
+        break;
+    }
 
-    while(1){
+    while (1) {
         char recv_buf[512];
-        memset(recv_buf, 0, 512);
+        memset(recv_buf, 0, sizeof(recv_buf));
 
-        ssize_t bytes_read = recv(fd, recv_buf, 512, 0);
-        if(bytes_read < 0) continue;
+        ssize_t bytes_read = recv(fd, recv_buf, sizeof(recv_buf), 0);
+        if (bytes_read < 0) {
+            continue;
+        }
 
-        struct ethhdr *eth_reply = (struct ethhdr*)recv_buf;
+        struct iphdr *ip_reply = (struct iphdr*)recv_buf;
 
-        if(ntohs(eth_reply->h_proto) == ETH_P_IP){
+        if (ip_reply->protocol != IPPROTO_UDP) {
+            continue;
+        }
 
-            struct iphdr *ip_reply = (struct iphdr*)(recv_buf + sizeof(struct ethhdr));
+        int ip_header_len = ip_reply->ihl * 4;
 
-        
-            if(ip_reply->protocol == IPPROTO_UDP){
-                struct udphdr *udp_reply = (struct udphdr*)(recv_buf + sizeof(struct ethhdr) + (ip_reply->ihl * 4));
+        if (bytes_read < ip_header_len + (int)sizeof(struct udphdr)) {
+            continue;
+        }
 
-                if(ntohs(udp_reply->dest) == CLIENT_PORT){
-                    char *reply_data = (char*)(recv_buf + sizeof(struct ethhdr) + (ip_reply->ihl * 4) + sizeof(struct udphdr));
-                    printf("Ответ от сервера:%s\n", reply_data);
-                    break;
-            }
+        struct udphdr *udp_reply = (struct udphdr*)(recv_buf + ip_header_len);
+
+        if (ntohs(udp_reply->source) == SERVER_PORT &&
+            ntohs(udp_reply->dest) == CLIENT_PORT) {
+
+            int reply_len = ntohs(udp_reply->len) - sizeof(struct udphdr);
+            char *reply_data = recv_buf + ip_header_len + sizeof(struct udphdr);
+
+            printf("Ответ от сервера: %.*s\n", reply_len, reply_data);
+            break;
         }
     }
-
-    }
+}
 
     close(fd);
 
