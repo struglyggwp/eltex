@@ -1,28 +1,44 @@
+#define _POSIX_C_SOURCE 200809L
+
 #include <stdio.h>
-#include <stdlib.h>
 #include <stdint.h>
-#include <string.h>
 #include <unistd.h>
+#include <string.h>
 #include <sys/socket.h>
-#include <netinet/in.h>
-#include <arpa/inet.h>
-#include <netinet/ip.h>
-#include <netinet/udp.h>
+#include <signal.h>
+#include <errno.h>
+#include "inet_proto.h"
 
-#define PORT 7777
-#define BUFFER_SIZE 512
-#define MAX_CLIENTS 10
 
-struct clients {
-    uint32_t ip_client;
-    uint16_t port_client;
-    int count;
-};
+static volatile sig_atomic_t run = 1;
+
+void handle_sigint(int signo)
+{
+    (void)signo;
+    run = 0;
+}
+
 
 int main(void)
 {
-    struct clients clients_info[MAX_CLIENTS];
-    memset(clients_info, 0, sizeof(clients_info));
+
+    struct sigaction sa;
+    memset(&sa, 0, sizeof(sa));
+    sa.sa_handler = handle_sigint;
+    sigemptyset(&sa.sa_mask);
+    sa.sa_flags = 0;
+
+    if (sigaction(SIGINT, &sa, NULL) == -1) {
+        perror("sigaction SIGINT");
+        exit(EXIT_FAILURE);
+    }
+    
+    if(sigaction(SIGTERM, &sa, NULL) == -1){
+        perror("error sigaction");
+        exit(EXIT_FAILURE);
+    }
+
+    struct client_info *client_head = NULL;
 
     int clients_count = 0;
 
@@ -41,84 +57,56 @@ int main(void)
 
     printf("RAW UDP сервер запущен на порту %d...\n", PORT);
 
-    while (1) {
+    while (run) {
         char buffer[BUFFER_SIZE];
         memset(buffer, 0, sizeof(buffer));
 
         ssize_t bytes = recv(fd, buffer, sizeof(buffer), 0);
-        if (bytes <= 0) {
-            continue;
-        }
+    
+        if (parse_packet(buffer, bytes, PORT) == -1) continue;
 
         struct iphdr *iph = (struct iphdr *)buffer;
-
-        if (iph->protocol != IPPROTO_UDP) {
-            continue;
-        }
-
         int ip_header_len = iph->ihl * 4;
-
-        if (bytes < ip_header_len + (int)sizeof(struct udphdr)) {
-            continue;
-        }
-
         struct udphdr *udph = (struct udphdr *)(buffer + ip_header_len);
-
-        if (ntohs(udph->dest) != PORT) {
-            continue;
-        }
-
-        int payload_len = ntohs(iph->tot_len) - ip_header_len - sizeof(struct udphdr);
-
-        if (payload_len <= 0) {
-            continue;
-        }
-
+        int payload_len = ntohs(udph->len) - sizeof(struct udphdr);
         char *payload = buffer + ip_header_len + sizeof(struct udphdr);
 
         uint32_t client_ip = iph->saddr;
         uint16_t client_port = ntohs(udph->source);
 
-        int index = -1;
+        struct client_info *client = find_client(client_head, client_ip, client_port);
 
-        for (int i = 0; i < clients_count; i++) {
-            if (clients_info[i].ip_client == client_ip &&
-                clients_info[i].port_client == client_port) {
-                index = i;
-                break;
-            }
-        }
+        if (client == NULL) {
 
-        if (index == -1) {
             if (clients_count >= MAX_CLIENTS) {
                 printf("[Сервер] Слишком много клиентов\n");
                 continue;
             }
 
-            index = clients_count;
-            clients_info[index].ip_client = client_ip;
-            clients_info[index].port_client = client_port;
-            clients_info[index].count = 0;
+            client = add_client(&client_head, client_ip, client_port);
+
+            if (client == NULL) continue;
+
             clients_count++;
+
         }
 
         if (payload_len == 4 && memcmp(payload, "exit", 4) == 0) {
+            
             printf("[Сервер] Клиент завершил соединение\n");
-            clients_info[index].count = 0;
+            remove_client(&client_head, client);
+            clients_count--;
+
             continue;
         }
 
-        clients_info[index].count++;
+        client->count++;
 
         printf("[Сервер] Получено: %.*s\n", payload_len, payload);
 
         char answer[256];
 
-        snprintf(answer, sizeof(answer),
-                 "%.*s %d",
-                 payload_len,
-                 payload,
-                 clients_info[index].count);
+        int answer_len = snprintf(answer, sizeof(answer), "%.*s %d", payload_len, payload, client->count);
 
         printf("[Сервер] Отправляю echo-ответ: %s\n", answer);
 
@@ -129,28 +117,12 @@ int main(void)
         struct udphdr *udp_reply = (struct udphdr *)(send_buf + sizeof(struct iphdr));
         char *reply_data = send_buf + sizeof(struct iphdr) + sizeof(struct udphdr);
 
-        int answer_len = strlen(answer);
-
         memcpy(reply_data, answer, answer_len);
 
         int packet_size = sizeof(struct iphdr) + sizeof(struct udphdr) + answer_len;
 
-        ip_reply->version = 4;
-        ip_reply->ihl = 5;
-        ip_reply->tos = 0;
-        ip_reply->tot_len = htons(packet_size);
-        ip_reply->id = 0;
-        ip_reply->frag_off = 0;
-        ip_reply->ttl = 64;
-        ip_reply->protocol = IPPROTO_UDP;
-        ip_reply->check = 0;
-        ip_reply->saddr = iph->daddr;
-        ip_reply->daddr = iph->saddr;
-
-        udp_reply->source = htons(PORT);
-        udp_reply->dest = udph->source;
-        udp_reply->len = htons(sizeof(struct udphdr) + answer_len);
-        udp_reply->check = 0;
+        ipv4_head_push(ip_reply, "127.0.0.1", "127.0.0.1", IPPROTO_UDP, answer_len);
+        udp_head_push(udp_reply, client_port, PORT, answer_len);
 
         struct sockaddr_in client_addr;
         memset(&client_addr, 0, sizeof(client_addr));
@@ -166,6 +138,8 @@ int main(void)
         }
     }
 
+    printf("Завершение работы\n");
+    free_clients(client_head);
     close(fd);
     return 0;
 }
