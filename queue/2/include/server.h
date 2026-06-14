@@ -8,4 +8,4 @@ struct client {
     char name[MAX_NAME_LEN];
 };
 
-#endif // SERVER_H
+#endif 

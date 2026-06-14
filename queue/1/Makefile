@@ -1,43 +1,54 @@
 CC = gcc
-CFLAGS = -Wall -Wextra -Wpedantic
-POSIX_LDLIBS = -lrt
 
-SYSTEMV_TARGETS = systemv_server systemv_client
-POSIX_TARGETS = posix_server posix_client
-TARGETS = $(SYSTEMV_TARGETS) $(POSIX_TARGETS)
+CFLAGS = -Wall -Wextra -Werror -std=c11 -D_POSIX_C_SOURCE=200809L
+LDLIBS = -lrt
 
-.PHONY: all systemv posix run_systemv run_posix clean
+OBJ_DIR = obj
+BIN_DIR = bin
+
+TARGETS = $(BIN_DIR)/posix_server \
+          $(BIN_DIR)/posix_client \
+          $(BIN_DIR)/systemv_server \
+          $(BIN_DIR)/systemv_client
 
 all: $(TARGETS)
 
-systemv: $(SYSTEMV_TARGETS)
+$(BIN_DIR)/posix_server: $(OBJ_DIR)/posix_server.o | $(BIN_DIR)
+	$(CC) $(CFLAGS) $< -o $@ $(LDLIBS)
 
-posix: $(POSIX_TARGETS)
+$(BIN_DIR)/posix_client: $(OBJ_DIR)/posix_client.o | $(BIN_DIR)
+	$(CC) $(CFLAGS) $< -o $@ $(LDLIBS)
 
-systemv_server: systemv_server.c
+$(BIN_DIR)/systemv_server: $(OBJ_DIR)/systemv_server.o | $(BIN_DIR)
 	$(CC) $(CFLAGS) $< -o $@
 
-systemv_client: systemv_client.c
+$(BIN_DIR)/systemv_client: $(OBJ_DIR)/systemv_client.o | $(BIN_DIR)
 	$(CC) $(CFLAGS) $< -o $@
 
-posix_server: posix_server.c
-	$(CC) $(CFLAGS) $< -o $@ $(POSIX_LDLIBS)
+$(OBJ_DIR)/%.o: %.c | $(OBJ_DIR)
+	$(CC) $(CFLAGS) -c $< -o $@
 
-posix_client: posix_client.c
-	$(CC) $(CFLAGS) $< -o $@ $(POSIX_LDLIBS)
+$(OBJ_DIR):
+	mkdir -p $(OBJ_DIR)
 
-run_systemv: systemv
-	./systemv_server & \
-	sleep 0.2; \
-	./systemv_client; \
-	wait
+$(BIN_DIR):
+	mkdir -p $(BIN_DIR)
 
-run_posix: posix
-	rm -f /dev/mqueue/posix_server_queue /dev/mqueue/posix_client_queue
-	./posix_server & \
-	sleep 0.2; \
-	./posix_client; \
-	wait
+run-posix-server: $(BIN_DIR)/posix_server
+	./$(BIN_DIR)/posix_server
+
+run-posix-client: $(BIN_DIR)/posix_client
+	./$(BIN_DIR)/posix_client
+
+run-systemv-server: $(BIN_DIR)/systemv_server
+	./$(BIN_DIR)/systemv_server
+
+run-systemv-client: $(BIN_DIR)/systemv_client
+	./$(BIN_DIR)/systemv_client
 
 clean:
-	rm -f $(TARGETS)
+	rm -rf $(OBJ_DIR) $(BIN_DIR)
+
+rebuild: clean all
+
+.PHONY: all clean rebuild run-posix-server run-posix-client run-systemv-server run-systemv-client

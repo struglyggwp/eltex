@@ -10,10 +10,10 @@
 #define CLIENT_TO_SERVER 2
 
 enum event_type {
-    EVENT_CHAT_MESSAGE, // новое сообщение в чате
-    EVENT_USER_JOINED, // новый пользователь подключился
-    EVENT_USER_LEFT, // пользователь отключился
-    EVENT_SYSTEM_MESSAGE // системное сообщение 
+    EVENT_CHAT_MESSAGE, 
+    EVENT_USER_JOINED, 
+    EVENT_USER_LEFT, 
+    EVENT_SYSTEM_MESSAGE 
 };
 
 struct msg_buffer {
@@ -21,7 +21,7 @@ struct msg_buffer {
     long sender_id;
     char mtext[MAX_MESSAGE_LEN];
     char username[MAX_NAME_LEN];
-    enum event_type msg_type_; // 1 - chat message, 2 - user joined, 3 - user left
+    enum event_type msg_type_; 
 };
 
 #endif // COMMON_H
